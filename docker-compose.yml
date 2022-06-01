@@ -1,0 +1,103 @@
+version: "3.9"
+services:
+  #Base de dados mongo
+  product-mongo:
+    image: "mongo:latest"
+    container_name: "products-mongo"
+    networks:
+      - services-network-01
+  #App de product, que usa o mongo
+  product-api:
+    image: lucasdeor/products-app
+    #ports: 
+    #  - "8080:8080" #8080 do container vai ser espelhada na 8080 da minha maquina
+    depends_on:
+      - product-mongo
+      - eureka-server
+    container_name: "product-app-instance"
+    networks:
+      - services-network-01
+  #Base de dados mongo
+  user-mongo:
+    image: "mongo:latest"
+    command: mongod --port 27018
+    container_name: "users-mongo"
+    ports:
+      - "27018:27018"
+    networks:
+      - services-network-01  
+  #App de user, que usa o mongo
+  user-api:
+    image: lucasdeor/users-app
+    ports: 
+      - "80:80" 
+    depends_on:
+      - user-mongo
+      - eureka-server
+    container_name: "user-app-instance"
+    networks:
+      - services-network-01
+  #Base de dados mongo
+  order-mongo:
+    image: "mongo:latest"
+    command: mongod --port 27019
+    container_name: "orders-mongo"
+    ports:
+      - "27019:27019"
+    networks:
+      - services-network-01  
+  #App de order, que usa o mongo
+  order-api:
+    image: lucasdeor/orders-app
+    ports:
+      - "8082:8082" #8082 do container vai ser espelhada na 8082 da minha maquina
+    depends_on:
+      - order-mongo
+      - eureka-server
+    container_name: "order-app-instance"
+    networks:
+      - services-network-01
+  #prometheus
+  prometheus:
+    image: "prom/prometheus"
+    container_name: prometheus-app
+    ports:
+      - "9090:9090"
+#    volumes:
+#      - ./prometheus/:/etc/prometheus
+#      - ./prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'  
+
+  grafana:
+    container_name: grafana
+    image: grafana/grafana:latest
+    #volumes:
+    #  - ./grafana/datasource.yml:/etc/grafana/provisioning/datasources/datasource.yml
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+
+  eureka-server:
+    image: lucasdeor/eureka-server
+    ports: 
+      - "8761:8761"
+    container_name: eureka-server    
+    networks:
+      - services-network-01
+
+  api-gateway:
+    image: lucasdeor/api-gateway
+    ports:
+      - "8080:8080"
+    container_name: "api-gateway"
+    networks:
+      - services-network-01
+    depends_on:
+      - eureka-server    
+
+networks:
+  services-network-01:
+    name: services-network-01      
